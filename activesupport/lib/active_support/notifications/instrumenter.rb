@@ -28,7 +28,7 @@ module ActiveSupport
             LegacyHandle.new(@notifier, name, id, payload)
           end
 
-          delegate :start, :finish, to: :@notifier
+          delegate :start, :finish, :listening?, to: :@notifier
         end
 
         def initialize(notifier, name, id, payload)
@@ -52,16 +52,20 @@ module ActiveSupport
       # notifier. Notice that events get sent even if an error occurs in the
       # passed-in block.
       def instrument(name, payload = {})
-        handle = build_handle(name, payload)
-        handle.start
-        begin
+        if @notifier.listening?(name)
+          handle = build_handle(name, payload)
+          handle.start
+          begin
+            yield payload if block_given?
+          rescue Exception => e
+            payload[:exception] = [e.class.name, e.message]
+            payload[:exception_object] = e
+            raise e
+          ensure
+            handle.finish
+          end
+        else
           yield payload if block_given?
-        rescue Exception => e
-          payload[:exception] = [e.class.name, e.message]
-          payload[:exception_object] = e
-          raise e
-        ensure
-          handle.finish
         end
       end
 

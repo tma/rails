@@ -8,14 +8,17 @@ module ActiveSupport
     class InstrumenterTest < ActiveSupport::TestCase
       class TestNotifier
         attr_reader :starts, :finishes
+        attr_accessor :listening
 
         def initialize
-          @starts   = []
-          @finishes = []
+          @starts    = []
+          @finishes  = []
+          @listening = true
         end
 
         def start(*args);  @starts << args; end
         def finish(*args); @finishes << args; end
+        def listening?(*); @listening; end
       end
 
       attr_reader :instrumenter, :notifier, :payload
@@ -34,6 +37,15 @@ module ActiveSupport
         }
 
         assert called
+      end
+
+      def test_instrument_when_notifier_is_not_listening
+        notifier.listening = false
+
+        instrumenter.instrument("foo", payload)
+
+        assert_equal 0, notifier.starts.size
+        assert_equal 0, notifier.finishes.size
       end
 
       def test_instrument_yields_the_payload_for_further_modification
